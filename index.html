@@ -90,14 +90,19 @@
     const qr = new Html5Qrcode('reader');
 
     document.getElementById('startBtn').addEventListener('click', () => {
+      // reader枠を先に表示してサイズを確定させてからカメラを起動する
+      document.getElementById('start-screen').style.display = 'none';
+      resultEl.style.display = 'flex';
+      resultEl.className = 'checking';
+      resultEl.textContent = 'カメラを起動中...';
+      document.getElementById('reader').style.display = 'block';
+
       qr.start({ facingMode: 'environment' }, { fps: 10, qrbox: 250 }, onScanSuccess)
         .then(() => {
-          document.getElementById('start-screen').style.display = 'none';
-          resultEl.style.display = 'flex';
-          document.getElementById('reader').style.display = 'block';
+          resultEl.className = 'idle';
+          resultEl.textContent = 'QRコードをカメラにかざしてください';
         })
         .catch(err => {
-          resultEl.style.display = 'flex';
           resultEl.className = 'notfound';
           resultEl.textContent = 'カメラを起動できません: ' + err;
         });
