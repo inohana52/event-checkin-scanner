@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>受付スキャナー</title>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <style>
+    body { font-family: sans-serif; margin: 0; padding: 0; text-align: center; background: #111; color: #fff; }
+    #reader { width: 100%; max-width: 480px; margin: 0 auto; }
+    #result {
+      padding: 40px 10px; min-height: 120px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+    }
+    .idle, .checking { background: #333; font-size: 5vw; color: #aaa; }
+    .notfound { background: #c62828; font-size: 6vw; font-weight: bold; }
+    .ok { background: #2e7d32; }
+    .already { background: #f9a825; color: #111; }
+    .name { font-size: 8vw; font-weight: bold; }
+    .extra { font-size: 4vw; font-weight: normal; margin-top: 14px; line-height: 1.6; }
+    #start-screen { padding: 60px 20px; }
+    #startBtn {
+      font-size: 6vw; padding: 24px 40px; border: none; border-radius: 12px;
+      background: #1565c0; color: #fff; cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div id="start-screen">
+    <button id="startBtn">📷 スキャンを開始</button>
+  </div>
+  <div id="result" class="idle" style="display:none;">QRコードをカメラにかざしてください</div>
+  <div id="reader" style="display:none;"></div>
+
+  <script>
+    // ↓ Apps Scriptをデプロイして発行された /exec URL に書き換える
+    const EXEC_URL = 'https://script.google.com/macros/s/AKfycbxRQpWas-3FzMyfXIZldgarj3d67S-RBkNMJWU-4dQh3mrZMpY75ix0P_5cr12bgtFw0Q/exec';
+
+    let scanning = true;
+    const resultEl = document.getElementById('result');
+
+    function onScanSuccess(decodedText) {
+      if (!scanning) return;
+      scanning = false;
+      resultEl.className = 'checking';
+      resultEl.textContent = '確認中...';
+
+      fetch(EXEC_URL + '?id=' + encodeURIComponent(decodedText))
+        .then(r => r.json())
+        .then(showResult)
+        .catch(showError);
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[c]));
+    }
+
+    function showResult(res) {
+      if (res.status === 'ok' || res.status === 'already') {
+        resultEl.className = res.status === 'ok' ? 'ok' : 'already';
+        const label = res.status === 'ok' ? ' 様 お待ちしておりました！' : ' 様 受付済みです';
+        let html = '<div class="name">' + escapeHtml(res.name) + label + '</div>';
+        const extra = res.extra || {};
+        const lines = Object.keys(extra).map(k => escapeHtml(k) + '：' + escapeHtml(extra[k]));
+        if (lines.length > 0) {
+          html += '<div class="extra">' + lines.join('<br>') + '</div>';
+        }
+        resultEl.innerHTML = html;
+      } else {
+        resultEl.className = 'notfound';
+        resultEl.textContent = '登録が見つかりません';
+      }
+      setTimeout(resume, 2500);
+    }
+
+    function showError(err) {
+      resultEl.className = 'notfound';
+      resultEl.textContent = '通信エラー: ' + err.message;
+      setTimeout(resume, 2500);
+    }
+
+    function resume() {
+      resultEl.className = 'idle';
+      resultEl.textContent = 'QRコードをカメラにかざしてください';
+      scanning = true;
+    }
+
+    const qr = new Html5Qrcode('reader');
+
+    document.getElementById('startBtn').addEventListener('click', () => {
+      qr.start({ facingMode: 'environment' }, { fps: 10, qrbox: 250 }, onScanSuccess)
+        .then(() => {
+          document.getElementById('start-screen').style.display = 'none';
+          resultEl.style.display = 'flex';
+          document.getElementById('reader').style.display = 'block';
+        })
+        .catch(err => {
+          resultEl.style.display = 'flex';
+          resultEl.className = 'notfound';
+          resultEl.textContent = 'カメラを起動できません: ' + err;
+        });
+    });
+  </script>
+</body>
+</html>
