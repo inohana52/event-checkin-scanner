@@ -89,6 +89,9 @@
 
     const qr = new Html5Qrcode('reader');
 
+    // Apps Scriptが休止状態から起動する待ち時間を減らすため、定期的に軽い通信を送る
+    function keepWarm() { fetch(EXEC_URL + '?ping=1').catch(() => {}); }
+
     document.getElementById('startBtn').addEventListener('click', () => {
       // reader枠を先に表示してサイズを確定させてからカメラを起動する
       document.getElementById('start-screen').style.display = 'none';
@@ -96,6 +99,8 @@
       resultEl.className = 'checking';
       resultEl.textContent = 'カメラを起動中...';
       document.getElementById('reader').style.display = 'block';
+      keepWarm();
+      setInterval(keepWarm, 45000);
 
       qr.start({ facingMode: 'environment' }, { fps: 10, qrbox: 250 }, onScanSuccess)
         .then(() => {
