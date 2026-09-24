@@ -37,6 +37,7 @@
     const EXEC_URL = 'https://script.google.com/macros/s/AKfycbyMJRBO-fPdZcq0RzXhULzYJZU1-aGKsWFwAmG9Ka6bKDiEjue_QPprLvV0naWogieEmw/exec';
 
     let scanning = true;
+    let scanStartedAt = 0;
     const resultEl = document.getElementById('result');
 
     function onScanSuccess(decodedText) {
@@ -44,6 +45,7 @@
       scanning = false;
       resultEl.className = 'checking';
       resultEl.textContent = '確認中...';
+      scanStartedAt = Date.now();
 
       fetch(EXEC_URL + '?id=' + encodeURIComponent(decodedText))
         .then(r => r.json())
@@ -67,6 +69,8 @@
         if (lines.length > 0) {
           html += '<div class="extra">' + lines.join('<br>') + '</div>';
         }
+        html += '<div class="extra" style="font-size:3vw;opacity:.7;">通信 ' +
+          ((Date.now() - scanStartedAt) / 1000).toFixed(1) + '秒</div>';
         resultEl.innerHTML = html;
       } else {
         resultEl.className = 'notfound';
